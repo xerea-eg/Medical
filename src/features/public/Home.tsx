@@ -11,7 +11,14 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/book" className="btn bg-sun text-white hover:opacity-90">احجز موعدك الآن</Link>
             <Link to="/login" className="btn border border-white/40 text-white hover:bg-white/10">تسجيل الدخول</Link></div></div>
-        <div className="aspect-[4/3] rounded-xl2 bg-white/10 border border-white/20 grid place-items-center text-white/60">صورة Hero</div>
+        <div className="relative aspect-[4/3] overflow-hidden rounded-xl2 border border-white/20 bg-white/10 grid place-items-center">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,.22),transparent_38%),radial-gradient(circle_at_80%_80%,rgba(249,115,22,.28),transparent_42%)]" />
+          <div className="relative text-center text-white">
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} width="88" height="88" alt="شعار XERIA Medical" className="mx-auto drop-shadow-lg" />
+            <p className="mt-4 text-2xl font-bold">XERIA <span className="font-normal text-white/80">Medical</span></p>
+            <p className="mt-2 text-sm text-white/70">رعاية تثق بها</p>
+          </div>
+        </div>
       </div></section>
     <section className="mx-auto max-w-6xl px-4 -mt-8 grid gap-4 md:grid-cols-3">
       {[[Phone, org.phone], [MapPin, org.address], [Clock, org.hours]].map(([I, t], i) => { const Icon = I as typeof Phone
