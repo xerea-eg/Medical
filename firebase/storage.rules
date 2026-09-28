@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function inOrg(o) { return request.auth != null && request.auth.token.orgId == o; }
+    function hasPerm(p) { return p in request.auth.token.perms; }
+    match /organizations/{o}/patients/{p}/attachments/{file} {
+      allow read: if inOrg(o) && hasPerm('attachments.view');
+      allow create: if inOrg(o) && hasPerm('attachments.upload')
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)|application/pdf');
+      allow delete: if inOrg(o) && hasPerm('attachments.delete');
+    }
+    match /{all=**} { allow read, write: if false; }
+  }
+}
