@@ -10,11 +10,18 @@ import { RequirePerm } from '../auth/RequirePerm'
 import Specialties from '../features/admin/Specialties'
 import Doctors from '../features/admin/Doctors'
 import Attachments from '../features/patients/Attachments'
+import Doctors_, { DoctorProfile } from '../features/public/Doctors'
+import Magazine, { Article } from '../features/public/Magazine'
+import { Specialties as Specs, About, Contact, NotFound } from '../features/public/Static'
+import Book from '../features/public/Book'
 import DashboardHome from '../features/dashboard/Home'
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 5 * 60_000, refetchOnWindowFocus: false } } }) // تقليل قراءات Firestore
 export default function App() {
   return (<QueryClientProvider client={qc}><AuthProvider><BrowserRouter basename={import.meta.env.BASE_URL}><Routes>
-    <Route element={<PublicLayout />}><Route index element={<Home />} /></Route>
+    <Route element={<PublicLayout />}><Route index element={<Home />} />
+      <Route path="specialties" element={<Specs />} /><Route path="doctors" element={<Doctors_ />} /><Route path="doctors/:id" element={<DoctorProfile />} />
+      <Route path="magazine" element={<Magazine />} /><Route path="magazine/:id" element={<Article />} />
+      <Route path="about" element={<About />} /><Route path="contact" element={<Contact />} /><Route path="book" element={<Book />} /><Route path="*" element={<NotFound />} /></Route>
     <Route path="/login" element={<Login />} />
     <Route path="/app" element={<RequireAuth />}><Route element={<DashboardLayout />}><Route index element={<DashboardHome />} />
       <Route element={<RequirePerm perm="specialties.manage" />}><Route path="specialties" element={<Specialties />} /></Route>

@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Phone, MapPin, Clock } from 'lucide-react'
-// TODO Phase 2: البيانات من publicOrgs/{slug} بقراءة واحدة
-const org = { name: 'مركز XERIA الطبي', phone: '0100 000 0000', address: 'القاهرة، مصر', hours: 'يوميًا 9 ص – 10 م' }
+import { org } from './demoData'
 export default function Home() {
   return (<>
     <section className="bg-gradient-to-bl from-brand-900 via-brand-700 to-magenta text-white">

@@ -12,6 +12,6 @@ export default function PublicLayout() {
           <Link to="/book" className="btn-primary !py-2">احجز موعد</Link></div>
       </div></header>
     <main className="flex-1"><Outlet /></main>
-    <footer className="border-t border-brand-100 py-6 text-center text-sm text-slate-500">مدعوم بواسطة XERIA Medical</footer>
+    <footer className="border-t border-brand-100 py-6 text-center text-sm text-slate-500">مدعوم بواسطة XERIA Medical · نسخة تجريبية ببيانات وهمية</footer>
   </div>)
 }
