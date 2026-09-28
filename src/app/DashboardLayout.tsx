@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Users, Stethoscope, Settings, Layers, LogOut, UserCog, ClipboardList, Newspaper, ArrowRight } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Users, Stethoscope, Settings, Layers, LogOut, UserCog, ClipboardList, Newspaper, ArrowRight, FileHeart } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import { useSession } from '../auth/AuthProvider'
 import type { Permission } from '../permissions/keys'
@@ -7,6 +7,7 @@ import type { Permission } from '../permissions/keys'
 const NAV: { to: string; label: string; icon: typeof Users; perm?: Permission }[] = [
   { to: '/app', label: 'الرئيسية', icon: LayoutDashboard },
   { to: '/app/appointments', label: 'الحجوزات', icon: CalendarDays, perm: 'appointments.view' },
+  { to: '/app/medical', label: 'الملفات الطبية', icon: FileHeart, perm: 'medical.view' },
   { to: '/app/patients', label: 'المرضى', icon: Users, perm: 'patients.view' },
   { to: '/app/users', label: 'المستخدمون', icon: UserCog, perm: 'users.manage' },
   { to: '/app/doctors', label: 'الأطباء', icon: Stethoscope, perm: 'doctors.manage' },

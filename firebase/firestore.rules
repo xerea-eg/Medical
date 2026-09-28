@@ -38,7 +38,8 @@ service cloud.firestore {
       match /appointments/{a} {
         allow read: if can(o, 'appointments.view');
         allow update: if can(o, 'appointments.update');
-        allow create, delete: if false; } // الإنشاء عبر Function (transaction ضد الحجز المزدوج)
+        allow create: if can(o, 'appointments.create');
+        allow delete: if can(o, 'appointments.cancel'); }
 
       // البيانات السريرية منفصلة عن بيانات المريض الأساسية
       match /visits/{v} { allow read: if can(o, 'medical.viewSensitive'); allow create, update: if can(o, 'diagnosis.create'); }
