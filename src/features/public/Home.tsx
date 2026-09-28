@@ -16,6 +16,6 @@ export default function Home() {
       </div></section>
     <section className="mx-auto max-w-6xl px-4 -mt-8 grid gap-4 md:grid-cols-3">
       {[[Phone, org.phone], [MapPin, org.address], [Clock, org.hours]].map(([I, t], i) => { const Icon = I as typeof Phone
-        return <div key={i} className="card flex items-center gap-3"><Icon className="text-brand-700" />{t as string}</div> })}
+        return <div key={i} className="card flex items-center gap-3"><Icon className="text-brand-700" /><span dir="auto">{t as string}</span></div> })}
     </section></>)
 }
