@@ -17,6 +17,10 @@ import Book from '../features/public/Book'
 import DashboardHome from '../features/dashboard/Home'
 import Appointments from '../features/dashboard/Appointments'
 import Patients from '../features/dashboard/Patients'
+import PatientProfile from '../features/dashboard/PatientProfile'
+import Users from '../features/admin/Users'
+import Nursing from '../features/admin/Nursing'
+import ArticlesAdmin from '../features/admin/Articles'
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 5 * 60_000, refetchOnWindowFocus: false } } }) // تقليل قراءات Firestore
 export default function App() {
   return (<QueryClientProvider client={qc}><AuthProvider><BrowserRouter basename={import.meta.env.BASE_URL}><Routes>
@@ -25,8 +29,8 @@ export default function App() {
       <Route path="magazine" element={<Magazine />} /><Route path="magazine/:id" element={<Article />} />
       <Route path="about" element={<About />} /><Route path="contact" element={<Contact />} /><Route path="book" element={<Book />} /><Route path="*" element={<NotFound />} /></Route>
     <Route path="/login" element={<Login />} />
-    <Route path="/demo" element={<DashboardLayout />}><Route index element={<DashboardHome />} /><Route path="appointments" element={<Appointments />} /><Route path="patients" element={<Patients />} /></Route>
-    <Route path="/app" element={<RequireAuth />}><Route element={<DashboardLayout />}><Route index element={<DashboardHome />} /><Route path="appointments" element={<Appointments />} /><Route path="patients" element={<Patients />} />
+    <Route path="/demo" element={<DashboardLayout />}><Route index element={<DashboardHome />} /><Route path="appointments" element={<Appointments />} /><Route path="patients" element={<Patients />} /><Route path="patients/:patientId" element={<PatientProfile />} /><Route path="users" element={<Users />} /><Route path="doctors" element={<Doctors />} /><Route path="specialties" element={<Specialties />} /><Route path="nursing" element={<Nursing />} /><Route path="articles" element={<ArticlesAdmin />} /></Route>
+    <Route path="/app" element={<RequireAuth />}><Route element={<DashboardLayout />}><Route index element={<DashboardHome />} /><Route path="appointments" element={<Appointments />} /><Route path="patients" element={<Patients />} /><Route path="patients/:patientId" element={<PatientProfile />} /><Route path="users" element={<Users />} /><Route path="nursing" element={<Nursing />} /><Route path="articles" element={<ArticlesAdmin />} />
       <Route element={<RequirePerm perm="specialties.manage" />}><Route path="specialties" element={<Specialties />} /></Route>
       <Route element={<RequirePerm perm="attachments.view" />}><Route path="patients/:patientId/attachments" element={<Attachments />} /></Route>
       <Route element={<RequirePerm perm="doctors.manage" />}><Route path="doctors" element={<Doctors />} /></Route></Route></Route>
