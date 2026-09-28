@@ -1,10 +1,20 @@
 import { collection, doc, getDoc, getDocs, orderBy, query, setDoc } from 'firebase/firestore'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 import { db } from '../firebase/config'
 import type { LocalAppointment, MedicalRecord } from '../features/dashboard/localClinic'
+import { auth } from '../firebase/config'
+
+const functions = getFunctions()
 
 const appointments = (orgId: string) => collection(db, 'organizations', orgId, 'appointments')
 const visit = (orgId: string, patientId: string) => doc(db, 'organizations', orgId, 'visits', patientId)
 const prescription = (orgId: string, patientId: string) => doc(db, 'organizations', orgId, 'prescriptions', patientId)
+
+export async function createRemoteMember(input: { email: string; password: string; displayName: string; roleId: string; phone?: string; doctorId?: string }) {
+  if (!auth.currentUser) throw new Error('يجب تسجيل الدخول بحساب مدير المركز أولًا.')
+  const call = httpsCallable<typeof input, { uid: string }>(functions, 'createMember')
+  return (await call(input)).data
+}
 
 export async function listAppointments(orgId: string): Promise<LocalAppointment[]> {
   const snapshot = await getDocs(query(appointments(orgId), orderBy('time')))
