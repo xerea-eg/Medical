@@ -1,0 +1,171 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>نظام إدارة العيادة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f6f4;--ink:#12262a;--mut:#63777a;--pri:#0f766e;--line:#dde6e4;--w:#fff}
+*{box-sizing:border-box}body{margin:0;font-family:Cairo,Tahoma,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font-family:inherit;font-size:14px}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+textarea{min-height:70px;resize:vertical}label{font-size:12px;color:var(--mut);display:block;margin:8px 0 3px}
+.btn{border:0;background:var(--pri);color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600}
+.btn.g{background:#e6eeec;color:var(--ink)}.btn.r{background:#dc2626}.btn.s{padding:5px 10px;font-size:12px}
+.login{max-width:340px;margin:12vh auto;background:#fff;padding:28px;border-radius:14px;box-shadow:0 8px 30px #0001}
+.shell{display:flex;min-height:100vh}.side{width:230px;background:#0c2a2c;color:#cfe3e0;padding:16px 10px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.side h3{margin:4px 8px 12px;color:#fff;font-size:16px}.side img{max-width:90px;max-height:60px;display:block;margin:0 8px 6px}
+.side a{padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px}.side a.on,.side a:hover{background:#155e5e;color:#fff}
+.main{flex:1;padding:22px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{background:#fff;border-radius:12px;padding:14px;border-right:6px solid var(--c);cursor:pointer;box-shadow:0 2px 10px #0000000d;position:relative}
+.card:hover{box-shadow:0 6px 18px #0000001a}.card .n{position:absolute;left:12px;top:10px;background:var(--c);color:#fff;border-radius:20px;padding:0 10px;font-weight:800}
+.card b{font-size:16px}.card small{display:block;color:var(--mut);margin-top:3px}.bd{display:inline-block;background:var(--c);color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;margin-top:8px}
+.acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.booked{--c:#f59e0b}.confirmed{--c:#2563eb}.waiting{--c:#7c3aed}.results{--c:#db2777}.done{--c:#059669}.archive{--c:#64748b}.red{--c:#dc2626}.ok{--c:#059669}.part{--c:#f59e0b}
+#modal{position:fixed;inset:0;background:#0008;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;z-index:9}
+.mb{background:#fff;border-radius:14px;width:min(860px,100%);padding:20px}.mb h2{margin:0 0 6px}
+.mb h4{margin:18px 0 4px;color:var(--pri);border-bottom:1px solid var(--line);padding-bottom:4px}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 12px}
+.rxr{display:grid;grid-template-columns:2fr 1.2fr 2fr auto;gap:6px;margin-bottom:6px}
+.box{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}
+.empty{color:var(--mut);padding:30px;text-align:center}
+@media(max-width:760px){.shell{flex-direction:column}.side{width:100%;height:auto;position:static;flex-direction:row;overflow:auto}.side h3,.side img{display:none}.side a{white-space:nowrap}.rxr{grid-template-columns:1fr 1fr}}
+</style></head><body><div id="app"></div><div id="modal"></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getFirestore,collection,doc,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,getDocs,runTransaction} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ====== ضع الإعدادات هنا ====== */
+const firebaseConfig={apiKey:"AIzaSyDtytTD5VHlK8VGgOoE_N-Q7c4ZiX2ntEU",authDomain:"xeria-eg.firebaseapp.com",projectId:"xeria-eg",storageBucket:"xeria-eg.firebasestorage.app",messagingSenderId:"1052466301432",appId:"1:1052466301432:web:e3cf0a591e63973d46ee0d"};
+const APPS_URL=""; // رابط Google Apps Script (Web App) لرفع الملفات على درايف
+/* ============================== */
+
+const db=getFirestore(initializeApp(firebaseConfig));
+const $=s=>document.querySelector(s),today=()=>new Date().toISOString().slice(0,10);
+const e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sha=async t=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const ST={booked:'محجوز',confirmed:'مؤكد',waiting:'في الانتظار',results:'انتظار نتائج',done:'تم الكشف',archive:'أرشيف'};
+const ROLE={admin:'مدير',doctor:'طبيب',secretary:'سكرتارية'};
+const ALL=['admin','doctor','secretary'];
+const TABS=[['book','📅 الحجوزات',['admin','secretary']],['waiting','🩺 شاشة الطبيب',['admin','doctor']],['results','🧪 انتظار نتائج',['admin','doctor']],['done','✅ تم الكشف',['admin','doctor']],['ops','💰 العمليات والحسابات',['admin','secretary']],['archive','🗄 الأرشيف',ALL],['fin','🏦 الالتزامات والتعاقدات',['admin','secretary']],['set','⚙ الإعدادات',['admin']]];
+let S={u:null,p:[],us:[],fin:[],cfg:{},v:null},D=null,rxOpen=false;
+const BLANK=()=>({status:'booked',date:today(),time:'',name:'',phone:'',age:'',gender:'',hist:'',diag:'',rx:[],rxNote:'',files:[],res:{type:'',note:''},op:{name:'',type:'',total:'',paid:'',date:''}});
+
+/* ---------- بيانات ---------- */
+async function boot(){
+  const us=await getDocs(collection(db,'users'));
+  if(us.empty)await setDoc(doc(db,'users','admin'),{username:'admin',name:'المدير',role:'admin',ph:await sha('123123')});
+  const uid=sessionStorage.uid;if(uid){const d=us.docs.find(x=>x.id===uid);if(d){S.u={...d.data(),id:d.id};listen()}}
+  R();
+}
+function listen(){
+  onSnapshot(collection(db,'patients'),s=>{S.p=s.docs.map(d=>({...d.data(),id:d.id}));R()});
+  onSnapshot(collection(db,'users'),s=>{S.us=s.docs.map(d=>({...d.data(),id:d.id}));R()});
+  onSnapshot(collection(db,'fin'),s=>{S.fin=s.docs.map(d=>({...d.data(),id:d.id}));R()});
+  onSnapshot(doc(db,'settings','clinic'),s=>{S.cfg=s.data()||{};R()});
+}
+const nextNum=()=>runTransaction(db,async t=>{const r=doc(db,'meta','counter'),s=await t.get(r),n=(s.exists()?s.data().n:0)+1;t.set(r,{n});return n});
+window.login=async()=>{
+  const us=await getDocs(collection(db,'users')),h=await sha($('#pw').value),u=us.docs.map(d=>({...d.data(),id:d.id})).find(x=>x.username===$('#un').value.trim()&&x.ph===h);
+  if(!u)return alert('اسم المستخدم أو كلمة المرور غير صحيحة');
+  sessionStorage.uid=u.id;S.u=u;S.v=null;listen();R();
+};
+window.logout=()=>{sessionStorage.clear();location.reload()};
+window.chPw=async()=>{const p=prompt('كلمة المرور الجديدة');if(p){await updateDoc(doc(db,'users',S.u.id),{ph:await sha(p)});alert('تم التغيير')}};
+
+/* ---------- الواجهة ---------- */
+function R(){
+  const A=$('#app');
+  if(!S.u){A.innerHTML=`<div class="login"><h2 style="margin-top:0">🏥 تسجيل الدخول</h2><label>اسم المستخدم</label><input id="un" value="admin"><label>كلمة المرور</label><input id="pw" type="password" onkeydown="if(event.key=='Enter')login()"><br><br><button class="btn" style="width:100%" onclick="login()">دخول</button></div>`;return}
+  const tabs=TABS.filter(t=>t[2].includes(S.u.role));if(!S.v||!tabs.find(t=>t[0]===S.v))S.v=tabs[0][0];
+  const c=S.cfg;
+  A.innerHTML=`<div class="shell"><div class="side">${c.logo?`<img src="${c.logo}">`:''}<h3>${e(c.doctor||'العيادة')}<br><small style="font-weight:400;color:#8fb3b0">${e(c.spec||'')}</small></h3>
+  ${tabs.map(t=>`<a class="${S.v===t[0]?'on':''}" onclick="S.v='${t[0]}';R()">${t[1]}</a>`).join('')}
+  <div style="flex:1"></div><a onclick="chPw()">🔑 تغيير كلمة المرور</a><a onclick="logout()">⎋ خروج (${e(S.u.name)})</a></div><div class="main">${view()}</div></div>`;
+}
+window.S=S;window.R=R;
+const list=(st)=>S.p.filter(p=>st.includes(p.status));
+function card(p,acts=''){
+  const cls=p.cls||p.status;
+  return `<div class="card ${cls}" onclick="openP('${p.id}')">${p.num?`<span class="n">#${p.num}</span>`:''}<b>${e(p.name)}</b><small>${e(p.age?p.age+' سنة • ':'')}${e(p.phone||'')}</small><small>📅 ${e(p.date||'')} ${e(p.time||'')}</small>${p.diag?`<small>🩺 ${e(p.diag.slice(0,50))}</small>`:''}<span class="bd">${p.badge||ST[p.status]}</span><div class="acts" onclick="event.stopPropagation()">${acts}</div></div>`;
+}
+const B=(t,fn,cl='')=>`<button class="btn s ${cl}" onclick="${fn}">${t}</button>`;
+const grid=(a,f)=>a.length?`<div class="grid">${a.map(f).join('')}</div>`:`<div class="empty">لا توجد حالات هنا</div>`;
+function view(){
+  const v=S.v,srt=(a,k)=>[...a].sort((x,y)=>(x[k]||'')>(y[k]||'')?1:-1);
+  const head=(t,btn='')=>`<div class="top"><h2 style="margin:0">${t}</h2>${btn}</div>`;
+  if(v==='book')return head('الحجوزات',`<button class="btn" onclick="openP('new')">+ حجز جديد</button>`)+grid(srt(list(['booked','confirmed']),'date'),p=>card(p,(p.status==='booked'?B('تأكيد',`mv('${p.id}','confirmed')`):'')+B('وصل العيادة',`mv('${p.id}','waiting')`,'g')+B('حذف',`del('${p.id}')`,'r')));
+  if(v==='waiting')return head('قائمة الانتظار — شاشة الطبيب')+grid(srt(list(['waiting']),'num').sort((a,b)=>(a.num||0)-(b.num||0)),p=>card(p));
+  if(v==='results')return head('انتظار نتائج (تحاليل / أشعة / أخرى)')+grid(list(['results']),p=>card({...p,badge:p.res?.type||'نتائج'},B('وصلت النتيجة — إعادة للانتظار',`mv('${p.id}','waiting')`)));
+  if(v==='done')return head('تم الكشف')+grid(list(['done']),p=>card(p,B('إعادة كشف',`mv('${p.id}','waiting')`)+B('أرشفة',`mv('${p.id}','archive')`,'g')));
+  if(v==='archive')return head('الأرشيف')+grid(list(['archive']),p=>card(p,B('إعادة فتح',`mv('${p.id}','waiting')`,'g')));
+  if(v==='ops'){
+    const a=S.p.filter(p=>p.op?.name),paid=a.reduce((s,p)=>s+(+p.op.paid||0),0),rem=a.reduce((s,p)=>s+(+p.op.total||0)-(+p.op.paid||0),0);
+    return head('العمليات والحسابات',`<b>المحصّل: ${paid} — المتبقي: ${rem}</b>`)+grid(a,p=>{const t=+p.op.total||0,pd=+p.op.paid||0,r=t-pd;
+      return card({...p,cls:r<=0?'ok':pd>0?'part':'red',badge:r<=0?'مسدد':pd>0?'مسدد جزئياً':'غير مسدد'},`<small style="width:100%">🔪 ${e(p.op.name)} (${e(p.op.type)})<br>الإجمالي ${t} • المدفوع ${pd} • المتبقي ${r}<br>📅 موعد العملية: ${e(p.op.date||'لم يحدد')}</small>`+B('سداد',`pay('${p.id}')`)+B('تحديد موعد',`opd('${p.id}')`,'g'))});
+  }
+  if(v==='fin'){
+    const un=S.fin.filter(f=>!f.paid).reduce((s,f)=>s+(+f.amount||0),0);
+    return head('الالتزامات النقدية والتعاقدات',`<b>إجمالي غير المسدد: ${un}</b>`)+`<div class="box"><div class="f"><div><label>البند</label><input id="fT"></div><div><label>النوع</label><select id="fY"><option>التزام نقدي</option><option>تعاقد</option></select></div><div><label>المبلغ</label><input id="fA" type="number"></div><div><label>تاريخ الاستحقاق</label><input id="fD" type="date"></div><div><label>ملاحظات</label><input id="fN"></div></div><br><button class="btn" onclick="addFin()">+ إضافة</button></div>`
+    +`<div class="box">${S.fin.length?S.fin.map(f=>`<div class="row"><span>${f.paid?'✅':'⏳'} <b>${e(f.title)}</b> (${e(f.type)}) — ${e(f.amount)} — ${e(f.due||'')} ${e(f.notes||'')}</span><span>${B(f.paid?'إلغاء السداد':'تم السداد',`togFin('${f.id}',${!f.paid})`,'g')} ${B('حذف',`delFin('${f.id}')`,'r')}</span></div>`).join(''):'<div class="empty">لا توجد بنود</div>'}</div>`;
+  }
+  if(v==='set'){const c=S.cfg,i=(k,l)=>`<div><label>${l}</label><input id="c_${k}" value="${e(c[k]||'')}"></div>`;
+    return head('الإعدادات')+`<div class="box"><h3 style="margin-top:0">بيانات الطبيب والعيادة</h3><div class="f">${i('doctor','اسم الطبيب')}${i('spec','التخصص')}${i('phone','الهاتف')}${i('wa','واتساب')}${i('email','البريد')}${i('addr','العنوان')}${i('hours','مواعيد العمل')}${i('extra','بيانات إضافية للروشتة')}</div><label>اللوجو</label><input type="file" accept="image/*" onchange="logo(this)">${c.logo?`<img src="${c.logo}" style="height:60px;margin-top:8px">`:''}<br><br><button class="btn" onclick="saveCfg()">حفظ الإعدادات</button></div>`
+    +`<div class="box"><h3 style="margin-top:0">المستخدمون</h3><div class="f"><div><label>اسم المستخدم</label><input id="uU"></div><div><label>الاسم</label><input id="uN"></div><div><label>كلمة المرور</label><input id="uP"></div><div><label>الصلاحية</label><select id="uR">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}">${v}</option>`)}</select></div></div><br><button class="btn" onclick="addUser()">+ إضافة مستخدم</button>${S.us.map(u=>`<div class="row"><span><b>${e(u.name)}</b> (${e(u.username)}) — ${ROLE[u.role]}</span><span>${B('تعديل',`eu('${u.id}')`,'g')} ${u.id===S.u.id?'':B('حذف',`du('${u.id}')`,'r')}</span></div>`).join('')}</div>`;}
+}
+
+/* ---------- إجراءات ---------- */
+window.mv=async(id,st)=>{const p=S.p.find(x=>x.id===id),u={status:st};if(st==='waiting'&&!p.num)u.num=await nextNum();await updateDoc(doc(db,'patients',id),u)};
+window.del=async id=>{if(confirm('حذف الحجز؟'))await deleteDoc(doc(db,'patients',id))};
+window.pay=async id=>{const p=S.p.find(x=>x.id===id),a=+prompt('المبلغ المسدد الآن');if(a>0)await updateDoc(doc(db,'patients',id),{'op.paid':(+p.op.paid||0)+a})};
+window.opd=async id=>{const d=prompt('موعد العملية (YYYY-MM-DD)',today());if(d)await updateDoc(doc(db,'patients',id),{'op.date':d})};
+window.addFin=async()=>{if(!$('#fT').value)return;await addDoc(collection(db,'fin'),{title:$('#fT').value,type:$('#fY').value,amount:$('#fA').value,due:$('#fD').value,notes:$('#fN').value,paid:false})};
+window.togFin=(id,v)=>updateDoc(doc(db,'fin',id),{paid:v});window.delFin=id=>confirm('حذف؟')&&deleteDoc(doc(db,'fin',id));
+window.saveCfg=async()=>{const o={...S.cfg};['doctor','spec','phone','wa','email','addr','hours','extra'].forEach(k=>o[k]=$('#c_'+k).value);await setDoc(doc(db,'settings','clinic'),o);alert('تم الحفظ')};
+window.logo=inp=>{const f=inp.files[0],im=new Image();im.onload=async()=>{const k=Math.min(1,220/im.width),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);await setDoc(doc(db,'settings','clinic'),{...S.cfg,logo:c.toDataURL('image/png')})};im.src=URL.createObjectURL(f)};
+window.addUser=async()=>{const u=$('#uU').value.trim(),p=$('#uP').value;if(!u||!p)return alert('اكتب اسم المستخدم وكلمة المرور');if(S.us.some(x=>x.username===u))return alert('الاسم مستخدم');await addDoc(collection(db,'users'),{username:u,name:$('#uN').value||u,role:$('#uR').value,ph:await sha(p)})};
+window.eu=async id=>{const u=S.us.find(x=>x.id===id),n=prompt('الاسم',u.name);if(n===null)return;const r=prompt('الصلاحية: admin / doctor / secretary',u.role),p=prompt('كلمة مرور جديدة (اتركها فارغة بدون تغيير)'),o={name:n,role:ROLE[r]?r:u.role};if(p)o.ph=await sha(p);await updateDoc(doc(db,'users',id),o)};
+window.du=id=>confirm('حذف المستخدم؟')&&deleteDoc(doc(db,'users',id));
+
+/* ---------- ملف المريض ---------- */
+const get=p=>p.split('.').reduce((o,k)=>o?.[k],D);
+window.setP=(p,v)=>{const k=p.split('.'),l=k.pop();k.reduce((o,x)=>o[x],D)[l]=v};
+const I=(p,l,t='text')=>`<div><label>${l}</label><input type="${t}" value="${e(get(p))}" oninput="setP('${p}',this.value)"></div>`;
+window.openP=async id=>{
+  const p=id==='new'?{}:S.p.find(x=>x.id===id);D={...BLANK(),...structuredClone(p)};D.res={...BLANK().res,...D.res};D.op={...BLANK().op,...D.op};rxOpen=false;
+  if(id!=='new'&&D.status==='waiting'&&!D.num){D.num=await nextNum();updateDoc(doc(db,'patients',id),{num:D.num})}
+  M();$('#modal').style.display='flex';
+};
+window.closeM=()=>{$('#modal').style.display='none';D=null};
+function M(){
+  $('#modal').innerHTML=`<div class="mb"><div class="top"><h2>${D.id?'ملف المريض':'حجز جديد'} ${D.num?`<span class="bd" style="--c:#7c3aed">رقم ${D.num}</span>`:''} <span class="bd ${D.status}">${ST[D.status]}</span></h2><button class="btn g" onclick="closeM()">✕</button></div>
+  <h4>البيانات الأساسية</h4><div class="f">${I('name','الاسم')}${I('phone','الهاتف')}${I('age','السن','number')}<div><label>النوع</label><select onchange="setP('gender',this.value)"><option></option>${['ذكر','أنثى'].map(g=>`<option ${D.gender===g?'selected':''}>${g}</option>`)}</select></div>${I('date','تاريخ الحجز','date')}${I('time','الوقت','time')}</div>
+  <label>التاريخ المرضي / ملاحظات الاستقبال</label><textarea oninput="setP('hist',this.value)">${e(D.hist)}</textarea>
+  <h4>المستندات (تُحفظ على Google Drive)</h4><input type="file" multiple onchange="up(this)">${D.files.map(f=>`<div class="row"><a href="${e(f.url)}" target="_blank">📎 ${e(f.name)}</a><button class="btn s r" onclick="D.files=D.files.filter(x=>x.url!=='${e(f.url)}');M()">✕</button></div>`).join('')}
+  <h4>التشخيص</h4><textarea oninput="setP('diag',this.value)">${e(D.diag)}</textarea>
+  <h4>الروشتة</h4><button class="btn g" onclick="rxOpen=!rxOpen;M()">💊 ${rxOpen?'إخفاء':'فتح'} الروشتة (${D.rx.length} دواء)</button>
+  ${rxOpen?`<div style="margin-top:10px">${D.rx.map((r,i)=>`<div class="rxr"><input placeholder="اسم الدواء" value="${e(r.drug)}" oninput="D.rx[${i}].drug=this.value"><input placeholder="عدد المرات" value="${e(r.times)}" oninput="D.rx[${i}].times=this.value"><input placeholder="توصيات" value="${e(r.note)}" oninput="D.rx[${i}].note=this.value"><button class="btn s r" onclick="D.rx.splice(${i},1);M()">✕</button></div>`).join('')}<button class="btn" onclick="D.rx.push({drug:'',times:'',note:''});M()">＋ إضافة دواء</button><label>توصيات عامة</label><textarea oninput="setP('rxNote',this.value)">${e(D.rxNote)}</textarea><br><button class="btn" onclick="pr()">🖨 طباعة الروشتة</button></div>`:''}
+  <h4>انتظار نتائج</h4><div class="f"><div><label>النوع</label><select onchange="setP('res.type',this.value)"><option></option>${['تحاليل','أشعة','أخرى'].map(g=>`<option ${D.res.type===g?'selected':''}>${g}</option>`)}</select></div>${I('res.note','تفاصيل المطلوب')}</div>
+  <h4>عملية جراحية (تُحوَّل للحسابات)</h4><div class="f">${I('op.name','اسم العملية')}${I('op.type','نوع العملية')}${I('op.total','التكلفة','number')}${I('op.paid','المدفوع','number')}${I('op.date','موعد العملية','date')}</div>
+  <div class="acts" style="margin-top:20px;border-top:1px solid var(--line);padding-top:14px"><button class="btn" onclick="sv()">💾 حفظ</button>${D.id?`<button class="btn" style="background:#059669" onclick="sv('done')">✔ تم الكشف</button><button class="btn" style="background:#db2777" onclick="sv('results')" ${D.res.type?'':'disabled title="اختر نوع النتائج"'}>🧪 انتظار نتائج</button>`:''}${D.status==='booked'?`<button class="btn g" onclick="sv('waiting')">وصل العيادة</button>`:''}</div></div>`;
+}
+window.sv=async st=>{
+  if(!D.name)return alert('اكتب اسم المريض');
+  if(st)D.status=st;if(D.status==='waiting'&&!D.num)D.num=await nextNum();if(st==='done')D.doneAt=Date.now();
+  const {id,...x}=D;if(id)await setDoc(doc(db,'patients',id),x);else await addDoc(collection(db,'patients'),x);closeM();
+};
+window.up=async inp=>{
+  if(!APPS_URL)return alert('ضع رابط Apps Script في APPS_URL');inp.disabled=true;
+  try{for(const f of inp.files){const b=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result.split(',')[1]);fr.readAsDataURL(f)});
+    const j=await(await fetch(APPS_URL,{method:'POST',body:JSON.stringify({name:f.name,mime:f.type,data:b,patient:(D.num?D.num+' - ':'')+(D.name||'بدون اسم')})})).json();
+    if(j.url)D.files.push({name:f.name,url:j.url});else alert(j.error||'فشل الرفع')}}catch(x){alert('فشل الرفع: '+x.message)}
+  M();
+};
+window.pr=()=>{
+  const c=S.cfg,w=open('','_blank');
+  w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>روشتة</title><style>body{font-family:Cairo,Tahoma,sans-serif;margin:0;padding:30px;color:#12262a}.h{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #0f766e;padding-bottom:12px}.h img{height:70px}.h h1{margin:0;color:#0f766e}.p{display:flex;justify-content:space-between;background:#eef5f3;padding:10px 14px;margin:14px 0;border-radius:8px}.rx{font-size:44px;color:#0f766e;font-weight:800}li{margin:12px 0;font-size:18px}li small{display:block;color:#63777a;font-size:14px}.f{position:fixed;bottom:20px;right:30px;left:30px;border-top:2px solid #0f766e;padding-top:8px;text-align:center;font-size:13px;color:#63777a}</style></head><body>
+  <div class="h"><div><h1>${e(c.doctor||'')}</h1><div>${e(c.spec||'')}</div><div style="font-size:13px">${e(c.extra||'')}</div></div>${c.logo?`<img src="${c.logo}">`:''}</div>
+  <div class="p"><span>المريض: <b>${e(D.name)}</b>${D.age?' — '+e(D.age)+' سنة':''}</span><span>التاريخ: ${today()}${D.num?' — رقم '+D.num:''}</span></div>
+  ${D.diag?`<div><b>التشخيص:</b> ${e(D.diag)}</div>`:''}<div class="rx">℞</div><ol>${D.rx.filter(r=>r.drug).map(r=>`<li><b>${e(r.drug)}</b> — ${e(r.times)}<small>${e(r.note)}</small></li>`).join('')}</ol>${D.rxNote?`<p><b>توصيات:</b> ${e(D.rxNote)}</p>`:''}
+  <div class="f">${[c.addr,c.phone&&'☎ '+c.phone,c.wa&&'واتساب '+c.wa,c.email,c.hours].filter(Boolean).map(e).join(' • ')}</div><script>onload=()=>print()<\/script></body></html>`);
+  w.document.close();
+};
+boot();
+</script></body></html>
