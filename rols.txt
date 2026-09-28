@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    // عزل المؤسسة: orgId في المسار يجب أن يطابق الـ Custom Claim
+    function inOrg(o) { return signedIn() && request.auth.token.orgId == o; }
+    function perms(o) { return get(/databases/$(db)/documents/organizations/$(o)/members/$(request.auth.uid)).data; }
+    function can(o, p) { return inOrg(o) && perms(o).active == true && p in perms(o).permissions; }
+
+    // نسخة عامة مختصرة للموقع: قراءة عامة، لا كتابة من العميل
+    match /publicOrgs/{slug}/{doc=**} { allow read: if true; allow write: if false; }
+
+    match /organizations/{o} {
+      allow read: if inOrg(o);
+      // الإعدادات فقط؛ الخطة والـ modules تُغيَّر من الخادم
+      allow update: if can(o, 'settings.manage') && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan', 'modules']);
+      allow create, delete: if false;
+
+      // الأعضاء والأدوار تُكتب من Cloud Functions فقط (لمنع رفع الصلاحيات)
+      match /members/{uid} { allow read: if request.auth.uid == uid || can(o, 'users.manage'); allow write: if false; }
+      match /roles/{r} { allow read: if inOrg(o); allow write: if false; }
+
+      match /patients/{p} {
+        allow read: if can(o, 'patients.view');
+        allow create: if can(o, 'patients.create');
+        allow update: if can(o, 'patients.update');
+        allow delete: if can(o, 'patients.delete');
+        match /attachments/{a} {
+          allow read: if can(o, 'attachments.view');
+          allow create: if can(o, 'attachments.upload');
+          allow delete: if can(o, 'attachments.delete'); }
+      }
+      match /appointments/{a} {
+        allow read: if can(o, 'appointments.view');
+        allow update: if can(o, 'appointments.update');
+        allow create, delete: if false; } // الإنشاء عبر Function (transaction ضد الحجز المزدوج)
+
+      // البيانات السريرية منفصلة عن بيانات المريض الأساسية
+      match /visits/{v} { allow read: if can(o, 'medical.viewSensitive'); allow create, update: if can(o, 'diagnosis.create'); }
+      match /prescriptions/{r} { allow read: if can(o, 'medical.view'); allow create, update: if can(o, 'prescription.create'); }
+
+      match /specialties/{s} { allow read: if inOrg(o); allow write: if can(o, 'specialties.manage'); }
+      match /doctors/{d} { allow read: if inOrg(o); allow write: if can(o, 'doctors.manage'); }
+      match /branches/{b} { allow read: if inOrg(o); allow write: if can(o, 'settings.manage'); }
+
+      match /auditLogs/{l} { allow read: if can(o, 'audit.view'); allow write: if false; } // تُكتب من Functions فقط
+      match /{other=**} { allow read, write: if false; } // أي شيء غير مذكور مرفوض
+    }
+    match /{all=**} { allow read, write: if false; }
+  }
+}

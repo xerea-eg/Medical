@@ -1,0 +1,10 @@
+node_modules
+dist
+functions/lib
+.firebase
+.env
+.env.*
+!.env.example
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+.DS_Store
