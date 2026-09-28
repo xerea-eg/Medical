@@ -15,6 +15,15 @@ const permissions = [
 
 const email = 'xereaeg@gmail.com'
 const orgId = 'demo'
+const rolePermissions = {
+  centerAdmin: permissions,
+  doctor: ['patients.view', 'patients.update', 'appointments.view', 'medical.view', 'medical.viewSensitive', 'diagnosis.create', 'prescription.create', 'attachments.view', 'attachments.upload'],
+  secretary: ['patients.view', 'patients.create', 'patients.update', 'appointments.view', 'appointments.create', 'appointments.update', 'appointments.cancel', 'attachments.upload'],
+  receptionist: ['patients.view', 'patients.create', 'appointments.view', 'appointments.create'],
+  accountant: ['billing.view', 'payments.create', 'reports.view', 'appointments.view'],
+  nurse: ['patients.view', 'appointments.view', 'medical.view', 'attachments.view'],
+  lab: ['patients.view', 'attachments.view', 'attachments.upload'],
+}
 
 async function main() {
   const user = await admin.auth().getUserByEmail(email)
@@ -23,7 +32,8 @@ async function main() {
   const db = admin.firestore()
   const orgRef = db.doc(`organizations/${orgId}`)
   await orgRef.set({ name: 'مركز XERIA الطبي', plan: 'basic' }, { merge: true })
-  await orgRef.collection('roles').doc('centerAdmin').set({ label: 'مدير المركز', permissions }, { merge: true })
+  const labels = { centerAdmin: 'مدير المركز', doctor: 'طبيب', secretary: 'سكرتارية', receptionist: 'استقبال', accountant: 'محاسب', nurse: 'تمريض', lab: 'معمل/أشعة' }
+  await Promise.all(Object.entries(rolePermissions).map(([id, rolePerms]) => orgRef.collection('roles').doc(id).set({ label: labels[id], permissions: rolePerms }, { merge: true })))
   await orgRef.collection('members').doc(user.uid).set({
     email, displayName: user.displayName || 'مدير المركز', role: 'centerAdmin', active: true, permissions,
   }, { merge: true })
