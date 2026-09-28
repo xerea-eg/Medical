@@ -16,13 +16,14 @@ jobs:
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
           VITE_USE_EMULATORS: 'false'
+          VITE_USE_LOCAL_DEMO: 'true'
           VITE_ATTACHMENT_BACKEND: firestore
           VITE_FIREBASE_API_KEY: AIzaSyDtytTD5VHlK8VGgOoE_N-Q7c4ZiX2ntEU
           VITE_FIREBASE_AUTH_DOMAIN: xeria-eg.firebaseapp.com
           VITE_FIREBASE_PROJECT_ID: xeria-eg
           VITE_FIREBASE_STORAGE_BUCKET: xeria-eg.firebasestorage.app
           VITE_FIREBASE_APP_ID: 1:1052466301432:web:e3cf0a591e63973d46ee0d
-      - run: cp dist/index.html dist/404.html
+      - run: cp dist/index.html dist/404.html   # لدعم الروابط الداخلية (SPA)
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }
   deploy:
