@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { LayoutDashboard, CalendarDays, Users, Stethoscope, Settings, Layers, LogOut } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import { useSession } from '../auth/AuthProvider'
@@ -13,7 +13,8 @@ const NAV: { to: string; label: string; icon: typeof Users; perm?: Permission }[
   { to: '/app/settings', label: 'الإعدادات', icon: Settings, perm: 'settings.manage' }]
 export default function DashboardLayout() {
   const { permissions, logout } = useSession()
-  const items = NAV.filter(n => !n.perm || permissions.includes(n.perm))
+  const isDemo = useLocation().pathname.startsWith('/demo')
+  const items = NAV.filter(n => isDemo || !n.perm || permissions.includes(n.perm)).map(item => ({ ...item, to: isDemo ? item.to.replace('/app', '/demo') : item.to }))
   return (<div className="min-h-screen md:flex">
     <aside className="hidden md:flex w-64 flex-col gap-1 bg-white border-e border-brand-100 p-4">
       <div className="mb-6 px-2"><Logo /></div>
